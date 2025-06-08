@@ -1,0 +1,13 @@
+reddit:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: host.docker.internal
+      user: admin
+      password: AdminPassword123
+      port: 5439
+      dbname: reddit
+      schema: dev
+      threads: 1
+      connect_timeout: 10

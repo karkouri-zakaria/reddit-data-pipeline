@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbit
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    restart: unless-stopped
+
+  airflow:
+    image: apache/airflow:latest
+    container_name: airflow_dbt_tensorflow
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=True
+    volumes:
+      - ./airflow_dbt_tensorflow/dags:/opt/airflow/dags
+      - ./airflow_dbt_tensorflow/home/airflow/.dbt:/home/airflow/.dbt
+      - ./airflow_dbt_tensorflow/scripts:/opt/airflow/scripts
+      - ./airflow_dbt_tensorflow/requirements.txt:/opt/airflow/requirements.txt
+      - ./airflow_dbt_tensorflow/simple_auth_manager_passwords.json.generated:/opt/airflow/simple_auth_manager_passwords.json.generated
+    ports:
+      - "8080:8080"
+    command: 
+      - bash
+      - -c
+      - |
+        pip install -r /opt/airflow/requirements.txt
+        airflow standalone
+    restart: unless-stopped
+
+  postgresql:
+    image: postgres:alpine
+    container_name: postgre_redshift
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: AdminPassword123
+      POSTGRES_DB: reddit
+    ports:
+      - "5439:5432"
+    restart: unless-stopped
+
+  superset:
+    image: apache/superset
+    container_name: superset
+    environment:
+      SUPERSET_SECRET_KEY: '39VVSpCHI29PPxKWAwd73c19kNb4e0+RMopG+YFS+TlaG5brov1VlJVT'
+    ports:
+      - "8011:8088"
+    restart: unless-stopped
+
+  terraform:
+    image: python:3.10-slim
+    container_name: pika_celery_terraform
+    network_mode: host
+    volumes:
+      - ./pika_celery_tensorflow:/app
+    working_dir: /app
+    command: >
+      bash -c "apt-get update &&
+      apt-get install -y gnupg curl &&
+      curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg &&
+      echo 'deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com bookworm main' > /etc/apt/sources.list.d/hashicorp.list &&
+      apt-get update &&
+      apt-get install -y terraform &&
+      pip install -r requirements.txt &&
+      terraform init &&
+      terraform apply -auto-approve"
